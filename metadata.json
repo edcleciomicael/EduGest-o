@@ -1,0 +1,6 @@
+{
+  "name": "EduGestão — Sistema de Gestão Escolar (MVC)",
+  "description": "Sistema completo de gestão escolar refatorado em arquitetura MVC com Injeção de Dependência e Clean Code: controle de alunos, matrículas, mensalidades e relatórios financeiros.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
