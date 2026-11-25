@@ -24,6 +24,7 @@ import {
   TURNOS_ESCOLARES,
   TurnoEscolar,
 } from '../models/types';
+import { DataGridPagination } from './components/DataGridPagination';
 
 interface AlunosViewProps {
   refreshVersion: number;
@@ -33,8 +34,6 @@ interface AlunosViewProps {
   onNotify: (mensagem: string, tipo?: 'sucesso' | 'erro') => void;
   onOpenNovaMensalidadeParaAluno: (alunoId: number) => void;
 }
-
-const ITENS_POR_PAGINA = 10;
 
 export const AlunosView: React.FC<AlunosViewProps> = ({
   refreshVersion,
@@ -48,6 +47,11 @@ export const AlunosView: React.FC<AlunosViewProps> = ({
 
   const [busca, setBusca] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
+
+  // Paginação das mensalidades dentro da Ficha do Aluno
+  const [paginaFicha, setPaginaFicha] = useState(1);
+  const [itensPorPaginaFicha, setItensPorPaginaFicha] = useState(10);
 
   // Modal de Cadastro/Edição
   const [modalAberto, setModalAberto] = useState(false);
@@ -78,16 +82,18 @@ export const AlunosView: React.FC<AlunosViewProps> = ({
     return alunoController.listarAlunos(busca);
   }, [alunoController, busca, refreshVersion]);
 
-  const totalPaginas = Math.max(1, Math.ceil(listaAlunos.length / ITENS_POR_PAGINA));
-
   useEffect(() => {
     setPagina(1);
-  }, [busca]);
+  }, [busca, itensPorPagina]);
+
+  useEffect(() => {
+    setPaginaFicha(1);
+  }, [selectedAlunoId, itensPorPaginaFicha]);
 
   const alunosPaginados = useMemo(() => {
-    const inicio = (pagina - 1) * ITENS_POR_PAGINA;
-    return listaAlunos.slice(inicio, inicio + ITENS_POR_PAGINA);
-  }, [listaAlunos, pagina]);
+    const inicio = (pagina - 1) * itensPorPagina;
+    return listaAlunos.slice(inicio, inicio + itensPorPagina);
+  }, [listaAlunos, pagina, itensPorPagina]);
 
   const fichaSelecionada = useMemo(() => {
     if (!selectedAlunoId) return null;
@@ -388,10 +394,10 @@ export const AlunosView: React.FC<AlunosViewProps> = ({
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[420px]">
             <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+                <tr className="text-[11px] font-semibold text-slate-500">
                   <th className="py-2.5 px-4">Descrição</th>
                   <th className="py-2.5 px-4 text-right">Valor</th>
                   <th className="py-2.5 px-4">Vencimento</th>
@@ -408,51 +414,64 @@ export const AlunosView: React.FC<AlunosViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  mensalidades.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-medium text-slate-900">{m.descricao}</td>
-                      <td className="py-3 px-4 text-right font-mono tabular-nums font-semibold text-slate-900">
-                        {MensalidadeModel.formatarMoeda(m.valor)}
-                      </td>
-                      <td className="py-3 px-4 font-mono tabular-nums text-slate-700">
-                        {MensalidadeModel.formatarData(m.vencimento)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`font-semibold ${
-                            m.status_real === 'pago'
-                              ? 'text-emerald-700'
-                              : m.status_real === 'atrasado'
-                              ? 'text-red-700'
-                              : 'text-amber-700'
-                          }`}
-                        >
-                          {MensalidadeModel.labelStatus(m.status_real)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono tabular-nums text-slate-600">
-                        {m.data_pag ? MensalidadeModel.formatarData(m.data_pag) : '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {m.status_real !== 'pago' ? (
-                          <button
-                            type="button"
-                            onClick={() => handlePagarMensalidadeNaFicha(m.id)}
-                            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  mensalidades
+                    .slice(
+                      (paginaFicha - 1) * itensPorPaginaFicha,
+                      paginaFicha * itensPorPaginaFicha
+                    )
+                    .map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4 font-medium text-slate-900">{m.descricao}</td>
+                        <td className="py-3 px-4 text-right font-mono tabular-nums font-semibold text-slate-900">
+                          {MensalidadeModel.formatarMoeda(m.valor)}
+                        </td>
+                        <td className="py-3 px-4 font-mono tabular-nums text-slate-700">
+                          {MensalidadeModel.formatarData(m.vencimento)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`font-semibold ${
+                              m.status_real === 'pago'
+                                ? 'text-emerald-700'
+                                : m.status_real === 'atrasado'
+                                ? 'text-red-700'
+                                : 'text-amber-700'
+                            }`}
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Pagar</span>
-                          </button>
-                        ) : (
-                          <span className="text-slate-400">Quitado</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                            {MensalidadeModel.labelStatus(m.status_real)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono tabular-nums text-slate-600">
+                          {m.data_pag ? MensalidadeModel.formatarData(m.data_pag) : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {m.status_real !== 'pago' ? (
+                            <button
+                              type="button"
+                              onClick={() => handlePagarMensalidadeNaFicha(m.id)}
+                              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Pagar</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400">Quitado</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                 )}
               </tbody>
             </table>
           </div>
+
+          <DataGridPagination
+            totalItens={mensalidades.length}
+            paginaAtual={paginaFicha}
+            itensPorPagina={itensPorPaginaFicha}
+            onPaginaChange={setPaginaFicha}
+            onItensPorPaginaChange={setItensPorPaginaFicha}
+          />
         </section>
 
         {/* Modal de edição caso acionado dentro da ficha */}
@@ -761,12 +780,12 @@ export const AlunosView: React.FC<AlunosViewProps> = ({
         </div>
       </div>
 
-      {/* Tabela de Alunos */}
+      {/* Tabela de Alunos com Altura Controlada e Paginação Completa */}
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[480px]">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <tr className="text-[11px] font-semibold text-slate-500">
                 <th className="py-3 px-4">ID</th>
                 <th className="py-3 px-4">Nome do Aluno</th>
                 <th className="py-3 px-4">CPF</th>
@@ -862,30 +881,13 @@ export const AlunosView: React.FC<AlunosViewProps> = ({
           </table>
         </div>
 
-        {/* Paginação */}
-        {totalPaginas > 1 && (
-          <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-mono tabular-nums">
-              Página {pagina} de {totalPaginas}
-            </span>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setPagina(num)}
-                  className={`px-2.5 py-1 rounded-md font-mono text-xs cursor-pointer ${
-                    num === pagina
-                      ? 'bg-slate-900 text-white font-semibold'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <DataGridPagination
+          totalItens={listaAlunos.length}
+          paginaAtual={pagina}
+          itensPorPagina={itensPorPagina}
+          onPaginaChange={setPagina}
+          onItensPorPaginaChange={setItensPorPagina}
+        />
       </section>
 
       {modalAberto && renderModalFormulario()}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, Eye, Search, Trash2, X } from 'lucide-react';
 import { useControllers } from '../container/DIContainer';
 import { MatriculaModel } from '../models/MatriculaModel';
@@ -11,6 +11,7 @@ import {
   TURNOS_ESCOLARES,
   TurnoEscolar,
 } from '../models/types';
+import { DataGridPagination } from './components/DataGridPagination';
 
 interface MatriculasViewProps {
   refreshVersion: number;
@@ -29,6 +30,8 @@ export const MatriculasView: React.FC<MatriculasViewProps> = ({
 
   const [busca, setBusca] = useState('');
   const [statusFiltro, setStatusFiltro] = useState<StatusMatricula | ''>('');
+  const [pagina, setPagina] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
 
   // Modal de edição (`matricula_edit.php`)
   const [editando, setEditando] = useState<MatriculaComAluno | null>(null);
@@ -44,6 +47,15 @@ export const MatriculasView: React.FC<MatriculasViewProps> = ({
   const listaMatriculas = useMemo(() => {
     return matriculaController.listarMatriculas(busca, statusFiltro);
   }, [matriculaController, busca, statusFiltro, refreshVersion]);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [busca, statusFiltro, itensPorPagina]);
+
+  const matriculasPaginadas = useMemo(() => {
+    const inicio = (pagina - 1) * itensPorPagina;
+    return listaMatriculas.slice(inicio, inicio + itensPorPagina);
+  }, [listaMatriculas, pagina, itensPorPagina]);
 
   const abrirEdicao = (m: MatriculaComAluno) => {
     setEditando(m);
@@ -140,12 +152,12 @@ export const MatriculasView: React.FC<MatriculasViewProps> = ({
         </div>
       </div>
 
-      {/* Tabela de Matrículas */}
+      {/* Tabela de Matrículas com Paginação e Altura Controlada */}
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[480px]">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <tr className="text-[11px] font-semibold text-slate-500">
                 <th className="py-3 px-4">Nº Matrícula</th>
                 <th className="py-3 px-4">Aluno</th>
                 <th className="py-3 px-4">Turma</th>
@@ -157,14 +169,14 @@ export const MatriculasView: React.FC<MatriculasViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {listaMatriculas.length === 0 ? (
+              {matriculasPaginadas.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-10 text-center text-slate-500">
                     Nenhuma matrícula encontrada.
                   </td>
                 </tr>
               ) : (
-                listaMatriculas.map((m) => (
+                matriculasPaginadas.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4 font-mono tabular-nums font-semibold text-slate-900">
                       {m.numero}
@@ -230,6 +242,14 @@ export const MatriculasView: React.FC<MatriculasViewProps> = ({
             </tbody>
           </table>
         </div>
+
+        <DataGridPagination
+          totalItens={listaMatriculas.length}
+          paginaAtual={pagina}
+          itensPorPagina={itensPorPagina}
+          onPaginaChange={setPagina}
+          onItensPorPaginaChange={setItensPorPagina}
+        />
       </section>
 
       {/* Modal Editar Matrícula (`matricula_edit.php`) */}

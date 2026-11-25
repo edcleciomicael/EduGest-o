@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Download, Eye } from 'lucide-react';
 import { useControllers } from '../container/DIContainer';
 import { MensalidadeModel } from '../models/MensalidadeModel';
 import { ModoFiltroRelatorio } from '../models/types';
+import { DataGridPagination } from './components/DataGridPagination';
 
 interface RelatorioFinanceiroViewProps {
   refreshVersion: number;
@@ -20,9 +21,32 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const [ano, setAno] = useState(() => new Date().getFullYear().toString());
 
+  // Paginação da tabela Resumo por Aluno
+  const [paginaAlunos, setPaginaAlunos] = useState(1);
+  const [itensPorPaginaAlunos, setItensPorPaginaAlunos] = useState(10);
+
+  // Paginação da tabela Detalhamento de Lançamentos
+  const [paginaDetalhes, setPaginaDetalhes] = useState(1);
+  const [itensPorPaginaDetalhes, setItensPorPaginaDetalhes] = useState(10);
+
   const relatorio = useMemo(() => {
     return relatorioController.consultarRelatorio({ modo, mes, ano });
   }, [relatorioController, modo, mes, ano, refreshVersion]);
+
+  useEffect(() => {
+    setPaginaAlunos(1);
+    setPaginaDetalhes(1);
+  }, [modo, mes, ano]);
+
+  const porAlunoPaginado = useMemo(() => {
+    const inicio = (paginaAlunos - 1) * itensPorPaginaAlunos;
+    return relatorio.porAluno.slice(inicio, inicio + itensPorPaginaAlunos);
+  }, [relatorio.porAluno, paginaAlunos, itensPorPaginaAlunos]);
+
+  const detalhamentoPaginado = useMemo(() => {
+    const inicio = (paginaDetalhes - 1) * itensPorPaginaDetalhes;
+    return relatorio.detalhamento.slice(inicio, inicio + itensPorPaginaDetalhes);
+  }, [relatorio.detalhamento, paginaDetalhes, itensPorPaginaDetalhes]);
 
   const exportarCSV = () => {
     const cabecalho = ['ID', 'Aluno', 'Turma', 'Descricao', 'Valor', 'Vencimento', 'Status', 'Pago Em'];
@@ -163,10 +187,10 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[420px]">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <tr className="text-[11px] font-semibold text-slate-500">
                 <th className="py-3 px-4">Aluno</th>
                 <th className="py-3 px-4 text-right">Pago</th>
                 <th className="py-3 px-4 text-right">Pendente</th>
@@ -176,14 +200,14 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {relatorio.porAluno.length === 0 ? (
+              {porAlunoPaginado.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500">
                     Nenhuma movimentação financeira para este período.
                   </td>
                 </tr>
               ) : (
-                relatorio.porAluno.map((item) => (
+                porAlunoPaginado.map((item) => (
                   <tr key={item.aluno_id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4">
                       <button
@@ -228,6 +252,14 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
             </tbody>
           </table>
         </div>
+
+        <DataGridPagination
+          totalItens={relatorio.porAluno.length}
+          paginaAtual={paginaAlunos}
+          itensPorPagina={itensPorPaginaAlunos}
+          onPaginaChange={setPaginaAlunos}
+          onItensPorPaginaChange={setItensPorPaginaAlunos}
+        />
       </section>
 
       {/* Tabela de Detalhamento */}
@@ -246,10 +278,10 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[420px]">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <tr className="text-[11px] font-semibold text-slate-500">
                 <th className="py-3 px-4">Aluno</th>
                 <th className="py-3 px-4">Descrição</th>
                 <th className="py-3 px-4 text-right">Valor</th>
@@ -259,14 +291,14 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {relatorio.detalhamento.length === 0 ? (
+              {detalhamentoPaginado.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500">
                     Nenhum registro encontrado.
                   </td>
                 </tr>
               ) : (
-                relatorio.detalhamento.map((m) => (
+                detalhamentoPaginado.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4 font-medium text-slate-900">{m.aluno_nome}</td>
                     <td className="py-3 px-4 text-slate-600">{m.descricao}</td>
@@ -298,6 +330,14 @@ export const RelatorioFinanceiroView: React.FC<RelatorioFinanceiroViewProps> = (
             </tbody>
           </table>
         </div>
+
+        <DataGridPagination
+          totalItens={relatorio.detalhamento.length}
+          paginaAtual={paginaDetalhes}
+          itensPorPagina={itensPorPaginaDetalhes}
+          onPaginaChange={setPaginaDetalhes}
+          onItensPorPaginaChange={setItensPorPaginaDetalhes}
+        />
       </section>
     </div>
   );

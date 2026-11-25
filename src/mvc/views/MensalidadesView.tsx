@@ -7,6 +7,7 @@ import {
   StatusMensalidadeArmazenado,
   StatusMensalidadeReal,
 } from '../models/types';
+import { DataGridPagination } from './components/DataGridPagination';
 
 interface MensalidadesViewProps {
   refreshVersion: number;
@@ -15,8 +16,6 @@ interface MensalidadesViewProps {
   onTriggerRefresh: () => void;
   onNotify: (mensagem: string, tipo?: 'sucesso' | 'erro') => void;
 }
-
-const ITENS_POR_PAGINA = 10;
 
 export const MensalidadesView: React.FC<MensalidadesViewProps> = ({
   refreshVersion,
@@ -30,6 +29,7 @@ export const MensalidadesView: React.FC<MensalidadesViewProps> = ({
   const [busca, setBusca] = useState('');
   const [statusFiltro, setStatusFiltro] = useState<StatusMensalidadeReal | ''>('');
   const [pagina, setPagina] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
 
   // Modal de criação/edição (`mensalidade_form.php`)
   const [modalAberto, setModalAberto] = useState(false);
@@ -54,11 +54,9 @@ export const MensalidadesView: React.FC<MensalidadesViewProps> = ({
     return mensalidadeController.listarMensalidades(busca, statusFiltro);
   }, [mensalidadeController, busca, statusFiltro, refreshVersion]);
 
-  const totalPaginas = Math.max(1, Math.ceil(dadosMensalidades.itens.length / ITENS_POR_PAGINA));
-
   useEffect(() => {
     setPagina(1);
-  }, [busca, statusFiltro]);
+  }, [busca, statusFiltro, itensPorPagina]);
 
   // Se veio da Ficha do Aluno clicando em "+ Nova Mensalidade", abre o modal automaticamente
   useEffect(() => {
@@ -77,9 +75,9 @@ export const MensalidadesView: React.FC<MensalidadesViewProps> = ({
   }, [preselectedAlunoId, onClearPreselectedAluno]);
 
   const itensPaginados = useMemo(() => {
-    const inicio = (pagina - 1) * ITENS_POR_PAGINA;
-    return dadosMensalidades.itens.slice(inicio, inicio + ITENS_POR_PAGINA);
-  }, [dadosMensalidades.itens, pagina]);
+    const inicio = (pagina - 1) * itensPorPagina;
+    return dadosMensalidades.itens.slice(inicio, inicio + itensPorPagina);
+  }, [dadosMensalidades.itens, pagina, itensPorPagina]);
 
   const abrirModalNova = () => {
     setEditando(null);
@@ -256,12 +254,12 @@ export const MensalidadesView: React.FC<MensalidadesViewProps> = ({
         </div>
       </div>
 
-      {/* Tabela de Mensalidades */}
+      {/* Tabela de Mensalidades com Altura Controlada e Paginação */}
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[480px]">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
+              <tr className="text-[11px] font-semibold text-slate-500">
                 <th className="py-3 px-4">Aluno</th>
                 <th className="py-3 px-4">Descrição</th>
                 <th className="py-3 px-4 text-right">Valor</th>
@@ -341,30 +339,13 @@ export const MensalidadesView: React.FC<MensalidadesViewProps> = ({
           </table>
         </div>
 
-        {/* Paginação */}
-        {totalPaginas > 1 && (
-          <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-mono tabular-nums">
-              Página {pagina} de {totalPaginas}
-            </span>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setPagina(num)}
-                  className={`px-2.5 py-1 rounded-md font-mono text-xs cursor-pointer ${
-                    num === pagina
-                      ? 'bg-slate-900 text-white font-semibold'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <DataGridPagination
+          totalItens={dadosMensalidades.itens.length}
+          paginaAtual={pagina}
+          itensPorPagina={itensPorPagina}
+          onPaginaChange={setPagina}
+          onItensPorPaginaChange={setItensPorPagina}
+        />
       </section>
 
       {/* Modal de Criação / Edição de Mensalidade (`mensalidade_form.php`) */}
